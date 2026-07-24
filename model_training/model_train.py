@@ -15,7 +15,7 @@ from .utils import (
     save_pickle,
     split_features_and_target,
 )
-
+ 
 
 def train_model(
     csv_path: str | Path,
@@ -24,6 +24,7 @@ def train_model(
     model: Any | None = None,
     test_size: float = 0.2,
     random_state: int = 42,
+   
 ) -> dict[str, Any]:
     """
     Train a model using tabular CSV data and save it as a pickle file.

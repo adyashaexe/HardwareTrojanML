@@ -10,13 +10,13 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
-
+ 
 def load_csv_data(csv_path: str | Path) -> pd.DataFrame:
     """Load a CSV file into a pandas DataFrame."""
     return pd.read_csv(csv_path)
 
 
-def split_features_and_target(
+def split_features_and_target(  
     data: pd.DataFrame,
     target_column: str,
 ) -> Tuple[pd.DataFrame, pd.Series]:
