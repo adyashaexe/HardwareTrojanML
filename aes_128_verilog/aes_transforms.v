@@ -1,4 +1,3 @@
-// aes_transforms.v
 // SubBytes, ShiftRows, MixColumns, AddRoundKey for AES-128.
 // State convention (matches FIPS-197): 128-bit word split into 16 bytes,
 // byte index idx = row + 4*col, with byte[0] = state_in[127:120] (MSB first).

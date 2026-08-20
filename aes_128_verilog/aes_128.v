@@ -1,4 +1,3 @@
-// aes_128.v
 // Top-level AES-128 encryption core.
 // Iterative architecture: one round processed per clock cycle (11 cycles
 // total: initial AddRoundKey + 9 full rounds + 1 final round).
@@ -15,7 +14,7 @@ module aes_128 (
     output reg          done
 );
 
-    // ---- Key expansion (combinational, depends only on key) ----
+    // Key expansion (combinational, depends only on key) 
     wire [127:0] rk0, rk1, rk2, rk3, rk4, rk5, rk6, rk7, rk8, rk9, rk10;
 
     key_expansion u_ke (
@@ -25,13 +24,13 @@ module aes_128 (
         .round_key8(rk8), .round_key9(rk9), .round_key10(rk10)
     );
 
-    // ---- FSM state ----
+    // FSM state
     localparam IDLE = 2'd0, RUN = 2'd1, DONE_ST = 2'd2;
     reg [1:0]  fsm_state;
     reg [127:0] state_reg;
     reg [3:0]   round_cnt;  // 0..10
 
-    // ---- Select current round key based on round_cnt ----
+    // Select current round key based on round_cnt
     reg [127:0] cur_round_key;
     always @(*) begin
         case (round_cnt)
@@ -50,7 +49,7 @@ module aes_128 (
         endcase
     end
 
-    // ---- Combinational round datapath ----
+    // Combinational round datapath
     wire [127:0] sb_out, sr_out, mc_out, ark_out;
 
     sub_bytes   u_sb (.state_in(state_reg), .state_out(sb_out));
@@ -61,7 +60,7 @@ module aes_128 (
     wire [127:0] pre_ark = (round_cnt == 4'd10) ? sr_out : mc_out;
     add_round_key u_ark (.state_in(pre_ark), .round_key(cur_round_key), .state_out(ark_out));
 
-    // ---- FSM sequencing ----
+    // FSM sequencing
     always @(posedge clk) begin
         if (rst) begin
             fsm_state  <= IDLE;

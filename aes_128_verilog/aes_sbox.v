@@ -1,4 +1,3 @@
-// aes_sbox.v
 // AES Forward S-Box: combinational lookup table (FIPS-197 standard)
 // Takes 8-bit input, returns 8-bit substituted output.
 

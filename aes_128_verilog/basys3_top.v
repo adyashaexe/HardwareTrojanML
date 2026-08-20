@@ -1,4 +1,3 @@
-// basys3_top.v
 // Top-level wrapper to run aes_128 (or a Trojan variant) on the real
 // Basys3 board. The Basys3 only has 16 switches, so the full 256-bit
 // (plaintext + key) input can't be entered by hand -- this wrapper uses
@@ -20,7 +19,7 @@ module basys3_top (
     output wire [15:0] led
 );
 
-    // ---- Fixed FIPS-197 test vector (hardcoded for hardware demo) ----
+    // Fixed FIPS-197 test vector (hardcoded for hardware demo)
     localparam [127:0] KEY_FIXED       = 128'h000102030405060708090a0b0c0d0e0f;
     localparam [127:0] PLAINTEXT_FIXED = 128'h00112233445566778899aabbccddeeff;
     // Expected result: 69c4e0d86a7b0430d8cdb78070b4c55a  <- verify LEDs against this
@@ -30,13 +29,13 @@ module basys3_top (
     reg          start_pulse;
     reg          btnC_prev;
 
-    // ---- Debounce-free single-cycle start pulse on button press ----
+    // Debounce-free single-cycle start pulse on button press
     always @(posedge clk_100mhz) begin
         btnC_prev   <= btnC;
         start_pulse <= btnC & ~btnC_prev; // rising edge only
     end
 
-    // ---- Instantiate the design under test ----
+    // Instantiate the design under test
     // Swap this module name to test a Trojan variant, e.g.:
     //   aes_128_trojan_leak dut ( ... same ports ... , .leak_out(leak_wire) );
     aes_128 dut (
@@ -49,7 +48,7 @@ module basys3_top (
         .done(done)
     );
 
-    // ---- Byte selector: sw[3:0] picks which of the 16 ciphertext bytes
+    // Byte selector: sw[3:0] picks which of the 16 ciphertext bytes
     //      to display on LEDs, so you can check the full 128-bit result
     //      by stepping through switch values 0-15 ----
     wire [7:0] selected_byte = ciphertext[127 - 8*sw[3:0] -: 8];

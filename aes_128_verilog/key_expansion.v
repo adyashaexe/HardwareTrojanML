@@ -1,4 +1,3 @@
-// key_expansion.v
 // AES-128 key expansion: generates 11 round keys (128 bits each) from the
 // original 128-bit cipher key. Purely combinational.
 
