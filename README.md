@@ -1,4 +1,6 @@
-# Hardware Trojan Detection using Machine Learning and Power Side-Channel Analysis on FPGA
+# HardwareTrojanML
+
+Hardware Trojan detection on FPGA-based AES-128 using power side-channel analysis and machine learning.
 
 **Group No:** ECSc_14
 **Members:** Adyasha Mohanty, Ayush Anand, Ayushman Mahapatra, Bidisha Jana
@@ -7,7 +9,7 @@
 
 ---
 
-## 1. What This Project Is
+## What This Project Is
 
 Chips today are designed in one place and fabricated in another, often
 untrusted, factory. A bad actor at that factory can secretly insert a
@@ -31,32 +33,63 @@ aimed at an IEEE publication and a patentable detection methodology.
 
 ---
 
-## 2. Project Flowchart
+## Repo Structure
 
-![Project Flowchart](project_flowchart.png)
+```
+HardwareTrojanML/
+├── verilog/                    AES-128 core, Trojan variants, Basys3 wrapper
+│   ├── aes_sbox.v
+│   ├── key_expansion.v
+│   ├── aes_transforms.v
+│   ├── aes_128.v                       clean baseline (verified vs FIPS-197)
+│   ├── aes_128_trojan_leak.v           Trojan 1: rare-pattern trigger, key leak
+│   ├── aes_128_trojan_counter.v        Trojan 2: time-delayed trigger, output corruption
+│   ├── aes_128_trojan_tiny.v           Trojan 3: minimal footprint, hardest to detect
+│   ├── basys3_top.v                    hardware wrapper for real-board testing
+│   ├── basys3_constraints.xdc          Basys3 pin mapping
+│   └── tb_aes_128.v                    testbench (FIPS-197 test vector)
+├── power_logging/               INA219 → CSV pipeline
+│   ├── ina219_stream.ino               Arduino sketch, streams sensor readings
+│   ├── log_power_session.py            logs one continuous session to raw CSV
+│   └── segment_traces.py               cuts raw session into labeled per-encryption traces
+├── ml/                           Training & evaluation pipeline
+│   └── hardware_trojan_training.ipynb
+├── data/                         Collected power traces (raw + processed)
+├── docs/                         Diagrams and reference material
+│   └── project_flowchart.png
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-## 3. Files You Already Have
+## Quick Start
 
-All in the `aes_128_verilog` folder:
+### 1. FPGA — build and test the AES-128 baseline
+See [Vivado Workflow](#vivado-workflow) below. Files in `verilog/`.
 
-| File | Purpose |
-|---|---|
-| `aes_sbox.v` | AES S-box lookup table |
-| `key_expansion.v` | Generates 11 round keys from the 128-bit key |
-| `aes_transforms.v` | SubBytes, ShiftRows, MixColumns, AddRoundKey |
-| `aes_128.v` | **Clean baseline** AES-128 core (verified against FIPS-197) |
-| `aes_128_trojan_leak.v` | Trojan variant 1 — rare-pattern trigger, key leak |
-| `aes_128_trojan_counter.v` | Trojan variant 2 — time-delayed trigger, output corruption |
-| `aes_128_trojan_tiny.v` | Trojan variant 3 — minimal footprint, hardest to detect |
-| `tb_aes_128.v` | Testbench (simulation only, checks against FIPS-197 vector) |
-| `basys3_top.v` | **Hardware wrapper** — needed because 256 bits of input won't fit on Basys3 switches |
-| `basys3_constraints.xdc` | Pin mapping for the Basys3 board |
+### 2. Power data collection
+```bash
+pip install -r requirements.txt
+cd power_logging
+python log_power_session.py --port COM5 --output clean_session.csv
+python segment_traces.py --input clean_session.csv --label clean --output clean_traces.csv
+```
+Full instructions: `power_logging/README.md`.
+
+### 3. Train the models
+Open `ml/hardware_trojan_training.ipynb`, point it at your combined traces
+CSV in `data/`, run all cells.
 
 ---
 
-## 4. Step-by-Step: Vivado Workflow
+## Project Flowchart
+
+![Project Flowchart](docs/project_flowchart.png)
+
+---
+
+## Vivado Workflow
 
 Do this once for the clean baseline, then repeat for each Trojan variant.
 
@@ -71,7 +104,7 @@ Do this once for the clean baseline, then repeat for each Trojan variant.
 
 ### Step B — Add design sources
 1. In the Sources panel: **Add Sources → Add or create design sources**.
-2. Add these 5 files (do NOT add the testbench here):
+2. Add these 5 files from `verilog/` (do NOT add the testbench here):
    - `aes_sbox.v`
    - `key_expansion.v`
    - `aes_transforms.v`
@@ -84,38 +117,29 @@ Do this once for the clean baseline, then repeat for each Trojan variant.
 
 ### Step C — Add the constraints file
 1. **Add Sources → Add or create constraints**.
-2. Add `basys3_constraints.xdc`.
+2. Add `basys3_constraints.xdc` from `verilog/`.
 3. Set `basys3_top` as the **top module** (right-click it in Sources →
    Set as Top).
 
 ### Step D — Simulate first (before touching real hardware)
-1. Add `tb_aes_128.v` as a **simulation source** (Add Sources →
-   Add or create simulation sources), along with the same 5 core files
-   (not `basys3_top.v` — the testbench talks to `aes_128` directly).
+1. Add `tb_aes_128.v` as a **simulation source**, along with the same 5
+   core files (not `basys3_top.v` — the testbench talks to `aes_128` directly).
 2. Flow Navigator → **Run Simulation → Run Behavioral Simulation**.
 3. Check the Tcl console output — it should print the ciphertext and say
    `PASS: matches FIPS-197 test vector`.
-4. **Do not proceed to hardware until this passes.** This step already
-   ran successfully outside Vivado (Icarus Verilog) for all 4 core
-   variants — Vivado simulation should agree.
+4. **Do not proceed to hardware until this passes.**
 
 ### Step E — Synthesis
-1. Flow Navigator → **Run Synthesis**.
-2. Wait for it to complete → click **Open Synthesized Design** if you
-   want to sanity-check the schematic, otherwise just proceed.
-3. Fix any critical warnings about unconnected ports before continuing
-   (there shouldn't be any with the provided wrapper).
+Flow Navigator → **Run Synthesis**. Fix any critical warnings about
+unconnected ports before continuing (there shouldn't be any with the
+provided wrapper).
 
 ### Step F — Implementation
-1. Flow Navigator → **Run Implementation**.
-2. This places and routes the design onto the actual FPGA fabric.
-3. Check the **Timing Summary** report — you want 0 timing violations
-   (WNS should be positive). This design is simple enough that it should
-   pass easily at 100 MHz.
+Flow Navigator → **Run Implementation**. Check the **Timing Summary**
+report — WNS should be positive (this design passes easily at 100 MHz).
 
 ### Step G — Generate bitstream
-1. Flow Navigator → **Generate Bitstream**.
-2. This produces the `.bit` file used to program the physical board.
+Flow Navigator → **Generate Bitstream**.
 
 ### Step H — Program the Basys3
 1. Connect the Basys3 via USB, power it on.
@@ -129,74 +153,68 @@ Do this once for the clean baseline, then repeat for each Trojan variant.
      to view on **LED[7:0]** (step through values 0–15).
    - Compare against the known-correct result:
      `69 c4 e0 d8 6a 7b 04 30 d8 cd b7 80 70 b4 c5 5a`
-     (byte at SW=0 should read `69`, SW=1 → `c4`, and so on).
 
 ### Step I — Repeat for each Trojan variant
 For each of `aes_128_trojan_leak.v`, `aes_128_trojan_counter.v`,
-`aes_128_trojan_tiny.v`:
-1. Either start a new Vivado project, or swap the source file and the
-   instantiation line in `basys3_top.v` within the same project.
-2. Re-run Steps D through H.
-3. **Keep a record of which bitstream corresponds to which variant** —
-   you'll be reprogramming the board repeatedly during data collection,
-   and mixing them up wastes a data-collection cycle.
+`aes_128_trojan_tiny.v`: swap the source file and instantiation line, re-run
+Steps D–H. **Keep a record of which bitstream corresponds to which
+variant** — you'll be reprogramming the board repeatedly during data
+collection.
 
 ---
 
-## 5. Step-by-Step: Power Data Collection
+## Power Data Collection
+
+Full step-by-step: `power_logging/README.md`. Summary:
 
 1. Wire the **INA219** power sensor in-line between the power supply and
-   the Basys3's power input.
-2. Connect INA219 → I2C → Arduino/Raspberry Pi (bridge device).
-3. Bridge device → USB → laptop, logging power readings to CSV.
-4. For **each** bitstream (clean baseline + each Trojan variant):
-   a. Program the board with that bitstream (Step H above).
-   b. Trigger many encryption runs (press BTNC repeatedly, or better,
-      wire a script/microcontroller to pulse BTNC automatically for
-      consistent timing).
-   c. Log a power trace for each run — aim for 50–100+ traces per variant.
-   d. Save all traces as labeled CSV files, e.g. `clean_run_001.csv`,
-      `trojan_leak_run_001.csv`, etc.
-5. Keep conditions consistent across all variants (same power source,
-   similar ambient temperature, same logging setup) so your model learns
-   the Trojan's signature and not session noise.
+   the Basys3's power input; connect INA219 → I2C → Arduino → USB → laptop.
+2. For each bitstream (clean + every Trojan variant): program the board,
+   run `log_power_session.py` while pressing BTNC repeatedly (50–100+ times),
+   then run `segment_traces.py` to cut the session into labeled traces.
+3. Keep conditions consistent across all variants (same power source,
+   similar ambient temperature) so the model learns the Trojan's signature,
+   not session noise.
+4. Combine all variants' trace CSVs into one file for training (see
+   `power_logging/README.md` Step 4).
 
 ---
 
-## 6. Step-by-Step: ML Pipeline
+## ML Pipeline
 
-1. **Preprocess:** align traces to a common start point, remove obvious
-   outliers, optionally reduce dimensionality (PCA).
-2. **Train Random Forest and SVM** locally in Python (scikit-learn) —
-   fast, CPU-only.
-3. **Train the 1D-CNN** on Google Colab (free GPU tier) using the same
-   preprocessed data.
-4. **Evaluate with leave-one-Trojan-out cross-validation** — train on
-   some variants, test on one held-out unseen variant, to prove
-   generalization rather than memorization.
-5. **Report accuracy, false positive rate, and false negative rate** for
-   each model. False negative rate (missed Trojans) is the metric that
-   matters most in this field.
+1. **Preprocess:** align traces, remove outliers, optionally reduce
+   dimensionality (PCA).
+2. **Train Random Forest and SVM** locally (CPU, fast). **Train the
+   1D-CNN** on Google Colab (free GPU tier) if local training is slow.
+3. **Evaluate with leave-one-Trojan-out cross-validation** — train on some
+   variants, test on one held-out unseen variant, to prove generalization
+   rather than memorization. See Section 7 of the training notebook.
+4. **Report accuracy, false positive rate, and false negative rate** for
+   each model. False negative rate (missed Trojans) matters most in this
+   field.
+
+Full notebook: `ml/hardware_trojan_training.ipynb` — also includes RF
+feature importance, multi-seed stability checks, inference latency,
+area/power overhead tables, ROC/AUC, and literature benchmarking sections.
 
 ---
 
-## 7. Components & Software Needed
+## Components & Software Needed
 
 | Item | Notes |
 |---|---|
 | Basys3 (Xilinx Artix-7) FPGA board | ₹8,000–10,000 |
 | INA219 current/power sensor module | ₹300–800 |
+| Arduino Uno/Nano (I2C bridge) | ₹300–600 |
 | USB programming cable | usually included with board |
 | Host laptop/PC (min 8GB RAM) | for Vivado + ML training |
 | Xilinx Vivado WebPACK | free, for Verilog design/simulation |
-| Python 3.x (scikit-learn, TensorFlow/PyTorch, pandas, numpy, matplotlib) | free |
-| TrustHub benchmark suite | free, public dataset |
-
-**Total estimated cost:** ₹8,500 – 11,300
+| Python 3.x (see `requirements.txt`) | free |
+| TrustHub benchmark suite | free, public dataset (reference only) |
 
 ---
 
-## 8. Work Distribution
+## Work Distribution
 
 - **Member 1:** ML model development, training, and evaluation.
 - **Member 2:** Power trace data acquisition setup and dataset preparation.
@@ -205,49 +223,44 @@ For each of `aes_128_trojan_leak.v`, `aes_128_trojan_counter.v`,
 
 ---
 
-## 9. Key Things to Get Right
+## Key Things to Get Right
 
-- **One FPGA is enough.** You reprogram it sequentially per variant —
-  no need for multiple boards. Budget real calendar time for this,
-  since it's the actual bottleneck, not the ML.
-- **Minimum 3 Trojan variants**, ideally 4–6, for leave-one-out
-  validation to mean anything.
-- **Realistic accuracy target: 85–95%.** If you see 99–100% immediately,
-  be suspicious of data leakage between train/test splits before
-  celebrating.
-- Report **false negative rate** alongside accuracy — it's the metric
-  that matters most for this problem.
-
----
-
-## 10. Where to Read More
-
-1. **UC San Diego/Irvine thesis** (closest match to this exact setup —
-   golden AES on FPGA, power traces, logistic regression, 95% accuracy):
-   https://escholarship.org/uc/item/7hk8x6rb
-2. **"Hardware Trojan Detection Using Machine Learning: A Tutorial,"
-   ACM TECS 2023** (Trojan taxonomy, trigger/payload types, detection
-   method survey):
-   https://scispace.com/pdf/hardware-trojan-detection-using-machine-learning-a-tutorial-1ef00xkq.pdf
-3. **"An AI-Enabled Side Channel Power Analysis Based Hardware Trojan
-   Detection," arXiv 2024** (compares RF, Gradient Boosting, Neural
-   Network, Naive Bayes on Trojans of varying subtlety):
-   https://arxiv.org/pdf/2411.12721
-4. **Scientific Reports, contrastive learning HT detection framework**
-   (good literature-review background on the field's history):
-   https://www.nature.com/articles/s41598-024-81473-0
+- **One FPGA is enough.** Reprogram sequentially per variant — budget real
+  calendar time for this, since it's the actual bottleneck, not the ML.
+- **Minimum 3 Trojan variants** (we have 3, with distinct trigger
+  mechanisms), ideally 4–6, for leave-one-out validation to mean anything.
+- **Realistic accuracy target: 85–95%** for our scale of data collection.
+  Published closest-match work (Artix-7 + AES-128, 10,000 traces/variant)
+  reports up to 99.37% — our own numbers should be read against that with
+  our much smaller dataset size in mind, not treated as directly comparable.
+- Report **false negative rate** alongside accuracy — it's the metric that
+  matters most for this problem.
 
 ---
 
-## 11. Deliverables Checklist
+## Where to Read More
 
-- [ ] Clean AES-128 baseline (Verilog, verified against FIPS-197)
-- [ ] 3+ Trojan variants (Verilog, verified functionally correct when untriggered)
+Full literature notes (Obsidian vault) available separately. Key sources:
+
+1. **Zantout 2018 (UC Irvine thesis)** — golden AES on FPGA, power traces,
+   feature engineering (round-segmentation) took accuracy from 53% to 99%.
+2. **Puspa et al. 2024 (arXiv)** — accuracy ranges 50–100% across 12 Trojan
+   types depending on subtlety, not model choice.
+3. **John, Pitta, Dofe & Pandey 2025** — closest hardware match (Artix FPGA
+   + AES-128 + ML on power traces). Random Forest hit 99.37% accuracy /
+   AUC 1.00 across 4 Trojan variants similar in spirit to our own 3.
+
+---
+
+## Deliverables Checklist
+
+- [x] Clean AES-128 baseline (Verilog, verified against FIPS-197)
+- [x] 3 Trojan variants (Verilog, verified functionally correct when untriggered)
 - [ ] Bitstreams generated and tested on real Basys3 hardware for each variant
 - [ ] Power trace dataset (labeled, clean + all variants)
 - [ ] Preprocessing pipeline (alignment, noise removal, PCA)
-- [ ] Trained RF, SVM, CNN models
-- [ ] Leave-one-Trojan-out evaluation results (accuracy, FPR, FNR)
+- [x] Training pipeline for RF, SVM, CNN with leave-one-Trojan-out CV
+- [ ] Leave-one-Trojan-out evaluation results (accuracy, FPR, FNR) on real data
 - [ ] Comparison table/chart across models
 - [ ] Final report / IEEE paper draft
 - [ ] Patent filing draft
