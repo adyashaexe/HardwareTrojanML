@@ -1,0 +1,14 @@
+{
+  "random_forest": {
+    "accuracy": 0.68,
+    "f1_weighted": 0.6569373079325035
+  },
+  "svm": {
+    "accuracy": 0.21,
+    "f1_weighted": 0.1991590784694233
+  },
+  "cnn_1d": {
+    "accuracy": 0.77,
+    "f1_weighted": 0.7691230800276305
+  }
+}
