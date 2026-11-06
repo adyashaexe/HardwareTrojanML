@@ -50,3 +50,18 @@ set_property PACKAGE_PIN N3  [get_ports {led[13]}]
 set_property PACKAGE_PIN P1  [get_ports {led[14]}]
 set_property PACKAGE_PIN L1  [get_ports {led[15]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {led[*]}]
+
+## Pmod JA (leak_out[7:0]) -- probe with a multimeter/scope, or jumper to a
+## spare LED. Needed by basys3_top.v (aes_128_trojan_leak) and by
+## basys3_top_v2.v (any variant's tap/leak signal). Leaving this out is a
+## known trap: Vivado will not implement a design with an unconstrained
+## top-level port, so basys3_top.v will not build until these are present.
+set_property PACKAGE_PIN J1 [get_ports {leak_out[0]}]
+set_property PACKAGE_PIN L2 [get_ports {leak_out[1]}]
+set_property PACKAGE_PIN J2 [get_ports {leak_out[2]}]
+set_property PACKAGE_PIN G2 [get_ports {leak_out[3]}]
+set_property PACKAGE_PIN H1 [get_ports {leak_out[4]}]
+set_property PACKAGE_PIN K2 [get_ports {leak_out[5]}]
+set_property PACKAGE_PIN H2 [get_ports {leak_out[6]}]
+set_property PACKAGE_PIN G3 [get_ports {leak_out[7]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leak_out[*]}]
