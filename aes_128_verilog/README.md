@@ -1,176 +1,511 @@
 
-# AES-128 Hardware Trojan Detection and Analysis on FPGA
+# AES-128 Hardware Trojan Detection and FPGA Analysis
 
-A Verilog-based AES-128 encryption implementation with multiple hardware Trojan variants, designed for simulation, FPGA deployment, and hardware-level power analysis using the Digilent Basys3 FPGA board.
+A step-by-step Verilog project implementing AES-128 encryption and multiple hardware Trojan variants. This project demonstrates RTL simulation, waveform analysis, FPGA synthesis, implementation, bitstream generation, and power analysis using the Digilent Basys3 FPGA board.
 
-## Project Overview
+---
 
-This project implements the AES-128 encryption algorithm and integrates multiple hardware Trojan variants to study their impact on:
+# Table of Contents
 
-- Functional correctness
-- FPGA resource utilization
-- Timing performance
-- Power consumption
-- Hardware security
+1. Project Overview
+2. Hardware and Software Requirements
+3. Project Directory Structure
+4. Installing Verilog Tools
+5. Setting Up the Project
+6. Understanding Verilog Files
+7. Writing and Running Your First Verilog Program
+8. Simulating AES-128
+9. Viewing Waveforms Using GTKWave
+10. Simulating Hardware Trojan Variants
+11. Setting Up Vivado
+12. Creating a Vivado Project
+13. Adding Verilog Source Files
+14. Configuring FPGA Constraints
+15. Selecting Trojan Variants
+16. Running Synthesis
+17. Running Implementation
+18. Generating the Bitstream
+19. Programming the Basys3 FPGA
+20. Power and Performance Analysis
+21. Automating Builds Using Tcl
+22. Troubleshooting
 
-The project uses Icarus Verilog for simulation and AMD Xilinx Vivado for FPGA synthesis, implementation, and bitstream generation.
+---
+
+# 1. Project Overview
+
+The objective of this project is to investigate the effects of hardware Trojans on an AES-128 cryptographic implementation.
+
+The project evaluates:
+
+- Functional correctness of AES encryption.
+- Hardware Trojan activation and behaviour.
+- FPGA resource utilization.
+- Timing performance.
+- Estimated power consumption.
+- External power measurements using INA219.
+
+The implementation uses Verilog HDL and targets the Artix-7 FPGA on the Digilent Basys3 development board.
+
+# 2. Hardware and Software Requirements
 
 ## Hardware Requirements
 
-- Digilent Basys3 FPGA Development Board
-- Artix-7 XC7A35T FPGA
-- Micro-USB cable
-- INA219 power monitoring sensor (for external power measurements)
+- Digilent Basys3 FPGA Development Board.
+- Artix-7 XC7A35T FPGA.
+- Micro-USB cable.
+- INA219 power monitoring sensor (for external measurements).
 
 ## Software Requirements
 
 | Software | Purpose |
 |---|---|
-| Icarus Verilog | Verilog simulation |
-| GTKWave | Waveform visualization |
+| Visual Studio Code | Writing and editing Verilog |
+| Icarus Verilog | Compiling and simulating Verilog |
+| GTKWave | Viewing simulation waveforms |
 | AMD Xilinx Vivado | FPGA synthesis and implementation |
 | Git | Version control |
 
-**Supported operating systems:**
-- Windows
-- Linux
-- macOS (simulation only; Vivado does not run natively)
+**Operating System Compatibility**
 
-## Project Structure
+- macOS: Verilog simulation using Icarus Verilog and GTKWave.
+- Windows: Verilog simulation and Vivado.
+- Linux: Verilog simulation and Vivado.
+
+Vivado does not run natively on macOS. Use a supported Windows/Linux computer or college laboratory PC for FPGA implementation.
+
+# 3. Project Directory Structure
+
+Organize the project as follows:
 
 ```text
 AES-Trojan-FPGA/
 │
-├── aes_sbox.v
-├── key_expansion.v
-├── aes_transforms.v
-├── aes_128.v
+├── rtl/
+│   ├── aes_sbox.v
+│   ├── key_expansion.v
+│   ├── aes_transforms.v
+│   ├── aes_128.v
+│   │
+│   ├── aes_128_trojan_leak.v
+│   ├── aes_128_trojan_counter.v
+│   ├── aes_128_trojan_tiny.v
+│   ├── aes_128_trojan_drain.v
+│   ├── aes_128_trojan_burst.v
+│   ├── aes_128_trojan_hamming.v
+│   │
+│   └── basys3_top_v2.v
 │
-├── aes_128_trojan_leak.v
-├── aes_128_trojan_counter.v
-├── aes_128_trojan_tiny.v
-├── aes_128_trojan_drain.v
-├── aes_128_trojan_burst.v
-├── aes_128_trojan_hamming.v
+├── testbench/
+│   ├── tb_aes_128.v
+│   └── tb_new_trojans.v
 │
-├── basys3_top_v2.v
+├── simulation/
 │
-├── tb_aes_128.v
-├── tb_new_trojans.v
+├── reports/
 │
-├── Basys3_Master.xdc
+├── constraints/
+│   └── Basys3_Master.xdc
+│
 ├── build.tcl
-│
 └── README.md
 ```
 
-## 1. Install Dependencies
+Place each existing source file in its corresponding folder. Update file paths in compilation commands accordingly.
 
-### Ubuntu / Debian
+# 4. Installing Verilog Tools
+
+## Step 1: Install Visual Studio Code
+
+1. Visit https://code.visualstudio.com/
+2. Download Visual Studio Code.
+3. Install the application.
+4. Open VS Code.
+5. Install a Verilog/SystemVerilog syntax-highlighting extension.
+
+## Step 2: Install Homebrew (macOS)
+
+Open Terminal and execute:
+
+```bash
+brew --version
+```
+
+If Homebrew is not installed, install it using:
+
+https://brew.sh/
+
+## Step 3: Install Icarus Verilog and GTKWave
+
+Execute:
+
+```bash
+brew install icarus-verilog gtkwave
+```
+
+Verify the installation:
+
+```bash
+iverilog -V
+gtkwave --version
+```
+
+For Ubuntu/Linux:
 
 ```bash
 sudo apt update
 sudo apt install iverilog gtkwave
 ```
 
-### macOS
+For Windows, install the Icarus Verilog Windows distribution and GTKWave.
+
+# 5. Setting Up the Project
+
+## Step 1: Create the project directory
+
+Open Terminal:
 
 ```bash
-brew install icarus-verilog gtkwave
-```
-
-### Windows
-
-Install Icarus Verilog and GTKWave using their Windows distributions.
-
-### Install Vivado
-
-1. Visit the AMD Xilinx website.
-2. Download the Vivado Unified Installer.
-3. Create or sign in to your AMD account.
-4. Select Vivado ML Standard Edition.
-5. Select the Artix-7 device family.
-6. Complete the installation.
-
-Vivado installation may require approximately 40 GB or more of available storage.
-
-## 2. Simulate AES-128 Using Icarus Verilog
-
-Navigate to the project directory:
-
-```bash
+mkdir AES-Trojan-FPGA
 cd AES-Trojan-FPGA
 ```
 
-Compile the AES modules and testbench:
+Create the required folders:
 
 ```bash
-iverilog -o sim.out \
-aes_sbox.v \
-key_expansion.v \
-aes_transforms.v \
-aes_128.v \
-tb_aes_128.v
+mkdir rtl testbench simulation reports constraints
 ```
 
-Run the simulation:
+## Step 2: Open the project in VS Code
+
+Execute:
 
 ```bash
-vvp sim.out
+code .
 ```
 
-### Expected Output
+Alternatively, open VS Code and select:
 
-For the standard AES-128 test vector:
+File → Open Folder → AES-Trojan-FPGA
+
+## Step 3: Add the Verilog source files
+
+Copy the existing Verilog files into the appropriate folders.
+
+Ensure that all required files are present before compiling.
+
+# 6. Understanding Verilog Files
+
+Before executing the project, understand the purpose of each Verilog module.
+
+| File | Description |
+|---|---|
+| aes_sbox.v | Implements AES substitution operations |
+| key_expansion.v | Generates round keys |
+| aes_transforms.v | Implements AES transformations |
+| aes_128.v | Main AES-128 encryption module |
+| aes_128_trojan_leak.v | Trojan implementation |
+| aes_128_trojan_counter.v | Trojan implementation |
+| aes_128_trojan_tiny.v | Trojan implementation |
+| aes_128_trojan_drain.v | Trojan implementation |
+| aes_128_trojan_burst.v | Trojan implementation |
+| aes_128_trojan_hamming.v | Trojan implementation |
+| basys3_top_v2.v | FPGA top-level wrapper |
+| tb_aes_128.v | AES testbench |
+| tb_new_trojans.v | Trojan testbench |
+
+## Understanding a Verilog Module
+
+A Verilog module describes a hardware component.
+
+Example:
+
+```verilog
+module and_gate(
+    input a,
+    input b,
+    output y
+);
+
+assign y = a & b;
+
+endmodule
+```
+
+Here:
+
+- `module` defines the hardware component.
+- `input` specifies incoming signals.
+- `output` specifies outgoing signals.
+- `assign` describes continuous logic.
+- `endmodule` terminates the module.
+
+## Understanding a Testbench
+
+A testbench is used to provide input signals and verify the behaviour of a hardware module.
+
+Example:
+
+```verilog
+module tb_and_gate;
+
+reg a, b;
+wire y;
+
+and_gate uut (
+    .a(a),
+    .b(b),
+    .y(y)
+);
+
+initial begin
+
+    $monitor("a=%b b=%b y=%b", a, b, y);
+
+    a = 0; b = 0;
+    #10;
+
+    a = 0; b = 1;
+    #10;
+
+    a = 1; b = 0;
+    #10;
+
+    a = 1; b = 1;
+    #10;
+
+    $finish;
+
+end
+
+endmodule
+```
+
+# 7. Writing and Running Your First Verilog Program
+
+Before executing AES, test whether your Verilog environment works.
+
+## Step 1: Create a Verilog file
+
+Create:
+
+```text
+and_gate.v
+```
+
+Add:
+
+```verilog
+module and_gate(
+    input a,
+    input b,
+    output y
+);
+
+assign y = a & b;
+
+endmodule
+```
+
+## Step 2: Create the testbench
+
+Create:
+
+```text
+tb_and_gate.v
+```
+
+Add:
+
+```verilog
+module tb_and_gate;
+
+reg a, b;
+wire y;
+
+and_gate uut (
+    .a(a),
+    .b(b),
+    .y(y)
+);
+
+initial begin
+
+    $monitor("a=%b b=%b y=%b", a, b, y);
+
+    a = 0; b = 0;
+    #10;
+
+    a = 0; b = 1;
+    #10;
+
+    a = 1; b = 0;
+    #10;
+
+    a = 1; b = 1;
+    #10;
+
+    $finish;
+
+end
+
+endmodule
+```
+
+## Step 3: Compile the program
+
+Open Terminal in the directory containing both files.
+
+Execute:
+
+```bash
+iverilog -o test and_gate.v tb_and_gate.v
+```
+
+## Step 4: Run the simulation
+
+Execute:
+
+```bash
+vvp test
+```
+
+Expected output:
+
+```text
+a=0 b=0 y=0
+a=0 b=1 y=0
+a=1 b=0 y=0
+a=1 b=1 y=1
+```
+
+This confirms that Icarus Verilog is working correctly.
+
+# 8. Simulating AES-128
+
+After successfully testing the basic Verilog program, proceed to AES-128 simulation.
+
+## Step 1: Open the AES source files
+
+Ensure that these files exist:
+
+```text
+rtl/aes_sbox.v
+rtl/key_expansion.v
+rtl/aes_transforms.v
+rtl/aes_128.v
+```
+
+Also ensure that the testbench exists:
+
+```text
+testbench/tb_aes_128.v
+```
+
+## Step 2: Compile AES-128
+
+Execute:
+
+```bash
+iverilog -o aes_sim \
+rtl/aes_sbox.v \
+rtl/key_expansion.v \
+rtl/aes_transforms.v \
+rtl/aes_128.v \
+testbench/tb_aes_128.v
+```
+
+## Step 3: Execute the simulation
+
+```bash
+vvp aes_sim
+```
+
+## Step 4: Verify the encryption result
+
+Use the standard AES-128 test vector.
 
 **Plaintext:**
+
 ```text
 00112233445566778899aabbccddeeff
 ```
 
-**Key:**
+**Encryption Key:**
+
 ```text
 000102030405060708090a0b0c0d0e0f
 ```
 
 **Expected Ciphertext:**
+
 ```text
 69c4e0d86a7b0430d8cdb78070b4c55a
 ```
 
-The generated ciphertext should match the expected AES-128 result.
+The ciphertext printed by the testbench must match the expected result.
 
-## 3. View Simulation Waveforms
+Do not proceed to FPGA implementation until the clean AES implementation passes simulation.
 
-Add the following statements inside the testbench initial block:
+# 9. Viewing Waveforms Using GTKWave
+
+Waveforms help visualize how signals change during simulation.
+
+## Step 1: Modify the testbench
+
+Open:
+
+```text
+testbench/tb_aes_128.v
+```
+
+Inside the testbench, add the following statements inside its initial block:
 
 ```verilog
-initial begin
-    $dumpfile("wave.vcd");
-    $dumpvars(0, tb_aes_128);
-end
+$dumpfile("simulation/aes_wave.vcd");
+$dumpvars(0, tb_aes_128);
 ```
 
-Recompile and execute:
+## Step 2: Recompile AES
 
 ```bash
-iverilog -o sim.out \
-aes_sbox.v \
-key_expansion.v \
-aes_transforms.v \
-aes_128.v \
-tb_aes_128.v
-
-vvp sim.out
+iverilog -o aes_sim \
+rtl/aes_sbox.v \
+rtl/key_expansion.v \
+rtl/aes_transforms.v \
+rtl/aes_128.v \
+testbench/tb_aes_128.v
 ```
 
-Open GTKWave:
+## Step 3: Generate waveform data
 
 ```bash
-gtkwave wave.vcd
+vvp aes_sim
 ```
 
-Inspect important signals:
+This generates:
+
+```text
+simulation/aes_wave.vcd
+```
+
+## Step 4: Open GTKWave
+
+```bash
+gtkwave simulation/aes_wave.vcd
+```
+
+## Step 5: Inspect the signals
+
+In GTKWave:
+
+1. Locate the testbench module in the left signal hierarchy.
+2. Expand the module.
+3. Select the signals.
+4. Click Append.
+5. Use Zoom Fit to display the complete simulation.
+
+Important signals to inspect:
 
 - Clock
 - Reset
@@ -179,88 +514,210 @@ Inspect important signals:
 - Plaintext
 - Ciphertext
 
-## 4. Simulate Hardware Trojan Variants
+# 10. Simulating Hardware Trojan Variants
 
-Compile the Trojan testbench with all required source modules.
+After verifying clean AES, simulate the Trojan implementations.
 
-```bash
-iverilog -o trojan_sim.out \
-aes_sbox.v \
-key_expansion.v \
-aes_transforms.v \
-aes_128.v \
-aes_128_trojan_leak.v \
-aes_128_trojan_counter.v \
-aes_128_trojan_tiny.v \
-aes_128_trojan_drain.v \
-aes_128_trojan_burst.v \
-aes_128_trojan_hamming.v \
-tb_new_trojans.v
-```
+## Step 1: Check the Trojan source files
 
-Run:
+Ensure all six Trojan modules are present in the `rtl` folder.
+
+## Step 2: Compile the Trojan testbench
+
+Execute:
 
 ```bash
-vvp trojan_sim.out
+iverilog -o trojan_sim \
+rtl/aes_sbox.v \
+rtl/key_expansion.v \
+rtl/aes_transforms.v \
+rtl/aes_128.v \
+rtl/aes_128_trojan_leak.v \
+rtl/aes_128_trojan_counter.v \
+rtl/aes_128_trojan_tiny.v \
+rtl/aes_128_trojan_drain.v \
+rtl/aes_128_trojan_burst.v \
+rtl/aes_128_trojan_hamming.v \
+testbench/tb_new_trojans.v
 ```
 
-Check the testbench results for each Trojan variant.
+## Step 3: Run the simulation
 
-## 5. Create the Vivado Project
+```bash
+vvp trojan_sim
+```
 
-1. Open AMD Xilinx Vivado.
-2. Select **Create Project**.
-3. Enter the project name.
-4. Select RTL Project.
-5. Choose Do not specify sources at this time.
-6. Select the FPGA part:
+## Step 4: Verify the results
+
+Check the simulation output for:
+
+- Correct module instantiation.
+- Trojan activation conditions.
+- Expected behaviour of each variant.
+- Differences between clean and Trojan-infected designs.
+
+The exact expected output depends on the implementation and testbench.
+
+# 11. Setting Up Vivado
+
+Vivado is used to convert the Verilog design into an FPGA-compatible bitstream.
+
+**Important:** Vivado does not run natively on macOS.
+
+Use a supported Windows/Linux system or your college FPGA laboratory computer.
+
+## Step 1: Download Vivado
+
+Visit:
+
+https://www.amd.com/en/products/software/adaptive-socs-and-fpgas/vivado.html
+
+## Step 2: Install Vivado
+
+1. Download the AMD Unified Installer.
+2. Sign in using your AMD account.
+3. Select Vivado ML Standard Edition.
+4. Select the Artix-7 device family.
+5. Complete the installation.
+
+## Step 3: Select the FPGA device
+
+The Basys3 uses:
 
 ```text
 xc7a35tcpg236-1
 ```
 
-7. Finish project creation.
+Ensure that the Artix-7 device family is installed.
 
-### Add Design Sources
+# 12. Creating a Vivado Project
 
-Add the following files:
+## Step 1: Open Vivado
+
+Launch Vivado and select:
 
 ```text
-aes_sbox.v
-key_expansion.v
-aes_transforms.v
-aes_128.v
-aes_128_trojan_leak.v
-aes_128_trojan_counter.v
-aes_128_trojan_tiny.v
-aes_128_trojan_drain.v
-aes_128_trojan_burst.v
-aes_128_trojan_hamming.v
-basys3_top_v2.v
+Create Project
 ```
 
-### Add Simulation Sources
+## Step 2: Enter project details
+
+Enter:
+
+```text
+Project Name: AES_Trojan_FPGA
+```
+
+Choose a project location without spaces in its path.
+
+Enable:
+
+```text
+Create project subdirectory
+```
+
+Click Next.
+
+## Step 3: Select project type
+
+Choose:
+
+```text
+RTL Project
+```
+
+Select:
+
+```text
+Do not specify sources at this time
+```
+
+Click Next.
+
+## Step 4: Select FPGA device
+
+Choose Parts and search:
+
+```text
+xc7a35tcpg236-1
+```
+
+Select the device and click Finish.
+
+# 13. Adding Verilog Source Files
+
+## Step 1: Add design sources
+
+In Vivado:
+
+1. Open Flow Navigator.
+2. Select Add Sources.
+3. Choose Add or Create Design Sources.
+4. Click Add Files.
+5. Select all AES and Trojan source files.
+6. Add `basys3_top_v2.v`.
+7. Click Finish.
+
+## Step 2: Add simulation sources
+
+Select Add Sources again.
+
+Choose:
+
+```text
+Add or Create Simulation Sources
+```
+
+Add:
 
 ```text
 tb_aes_128.v
 tb_new_trojans.v
 ```
 
-### Add Constraints
+## Step 3: Add constraints
 
-Add the Digilent Basys3 master XDC constraints file.
+Select Add Sources.
 
-Set the design top module:
+Choose:
 
 ```text
-basys3_top_v2
+Add or Create Constraints
 ```
 
-## 6. Configure FPGA Constraints
+Add:
 
-Edit the Basys3 XDC file and uncomment only the required pin assignments.
+```text
+Basys3_Master.xdc
+```
 
-Example clock constraint:
+## Step 4: Set the top module
+
+In the Sources panel:
+
+1. Locate `basys3_top_v2`.
+2. Right-click the module.
+3. Select Set as Top.
+
+The module should appear in bold.
+
+# 14. Configuring FPGA Constraints
+
+The XDC file maps Verilog input/output ports to physical FPGA pins.
+
+## Step 1: Open the XDC file
+
+Open:
+
+```text
+Basys3_Master.xdc
+```
+
+## Step 2: Configure the clock
+
+The Basys3 onboard clock uses pin W5.
+
+Example:
 
 ```tcl
 set_property -dict { PACKAGE_PIN W5 IOSTANDARD LVCMOS33 } [get_ports clk]
@@ -270,39 +727,61 @@ create_clock -add -name sys_clk_pin \
 -waveform {0 5} [get_ports clk]
 ```
 
-Ensure that:
+## Step 3: Configure remaining pins
 
-- Every required top-level input has a pin assignment.
-- Every required top-level output has a pin assignment.
-- Port names match the Verilog module exactly.
-- The clock constraint matches the intended operating frequency.
+Uncomment and configure the required:
 
-The example clock constraint specifies 100 MHz.
+- Push buttons.
+- Switches.
+- LEDs.
+- Additional output pins.
 
-## 7. Configure Trojan Variants
+The names in the XDC file must match the actual top-level Verilog ports.
 
-The project uses a configurable parameter:
+For example, if your Verilog module declares:
+
+```verilog
+input clk;
+```
+
+The corresponding XDC constraint must reference:
+
+```tcl
+[get_ports clk]
+```
+
+Check the actual port names in `basys3_top_v2.v` before editing the constraints.
+
+# 15. Selecting Trojan Variants
+
+The FPGA top-level module uses a configurable parameter named `VARIANT`.
+
+Example:
 
 ```verilog
 parameter VARIANT = 0;
 ```
 
-Change the value to select a different implementation.
+The project supports seven configurations.
+
+| Variant | Configuration |
+|---|---|
+| 0 | Clean AES |
+| 1–6 | Trojan variants |
+
+Refer to the mapping comments in `basys3_top_v2.v` for the exact assignment of each Trojan.
+
+## Changing the variant in Verilog
+
+Example:
 
 ```verilog
 parameter VARIANT = 4;
 ```
 
-The supported parameter values are:
+## Changing the variant in Vivado
 
-| VARIANT | Configuration |
-|---|---|
-| 0 | Clean AES implementation |
-| 1–6 | Trojan configurations |
-
-Refer to the variant mapping comments in `basys3_top_v2.v` for the exact Trojan-to-number mapping.
-
-You can configure this parameter in Vivado under:
+Navigate to:
 
 ```text
 Settings → General → Generics/Parameters
@@ -315,109 +794,176 @@ Name: VARIANT
 Value: 4
 ```
 
-## 8. Run Synthesis
+Apply the changes.
 
-In Vivado:
+# 16. Running Synthesis
 
-1. Select Run Synthesis.
-2. Wait for synthesis to complete.
-3. Open Synthesized Design.
-4. Open Report Utilization.
+Synthesis converts Verilog RTL into a gate-level representation.
+
+## Steps
+
+1. Open Vivado.
+2. Verify that `basys3_top_v2` is the design top.
+3. Verify that the XDC file is included.
+4. Select Run Synthesis.
+5. Click OK.
+6. Wait for synthesis to finish.
+7. Open Synthesized Design.
+
+## Check utilization
+
+Navigate to:
+
+```text
+Reports → Report Utilization
+```
 
 Record:
 
-- LUT utilization
-- Flip-flop utilization
-- Slice utilization
-- Total FPGA resource usage
+- LUTs.
+- Flip-flops.
+- Slices.
+- Other relevant FPGA resources.
 
-Check the Messages tab for errors, latch warnings, and multiple-driver warnings.
+Inspect the Messages tab for errors and warnings.
 
-## 9. Run Implementation
+# 17. Running Implementation
+
+Implementation performs optimization, placement and routing.
+
+## Steps
+
+1. Select Run Implementation.
+2. Click OK.
+3. Wait for completion.
+4. Open Implemented Design.
+
+## Generate reports
+
+### Timing Summary
+
+Navigate to:
+
+```text
+Reports → Timing → Report Timing Summary
+```
+
+Check:
+
+- WNS (Worst Negative Slack).
+- TNS (Total Negative Slack).
+- Timing constraints.
+
+A non-negative WNS indicates that the analyzed timing requirements are met.
+
+### Utilization Report
+
+Record LUT and flip-flop utilization.
+
+### Power Report
+
+Navigate to:
+
+```text
+Reports → Report Power
+```
+
+Record:
+
+- Total estimated power.
+- Dynamic power.
+- Static power.
+
+Save each report in the `reports` folder.
+
+# 18. Generating the Bitstream
+
+After successful implementation:
+
+1. Select Generate Bitstream.
+2. Click OK.
+3. Wait for generation to finish.
+4. Check the Messages tab.
+5. Resolve any remaining errors.
+
+The generated bitstream will normally be located at:
+
+```text
+AES_Trojan_FPGA.runs/impl_1/basys3_top_v2.bit
+```
+
+# 19. Programming the Basys3 FPGA
+
+## Step 1: Connect the board
+
+1. Connect the Basys3 to your computer using a micro-USB cable.
+2. Turn on the board.
+3. Check that the JP1 jumper is configured for JTAG.
+
+## Step 2: Open Hardware Manager
+
+In Vivado:
+
+```text
+Open Hardware Manager
+```
 
 Select:
 
 ```text
-Run Implementation
+Open Target → Auto Connect
 ```
 
-Vivado performs:
+## Step 3: Program the device
 
-- Optimization
-- Placement
-- Routing
+1. Select Program Device.
+2. Select the FPGA device `xc7a35t_0`.
+3. Select the generated `.bit` file.
+4. Click Program.
 
-After implementation, generate the following reports:
+After successful programming, the FPGA executes the selected design.
 
-### Timing Report
+To test another variant, change the VARIANT parameter and rebuild the design.
 
-Check:
+# 20. Power and Performance Analysis
 
-- Worst Negative Slack (WNS)
-- Total Negative Slack (TNS)
-- Clock timing performance
+Compare the clean AES implementation with each Trojan implementation.
 
-A non-negative WNS indicates that the reported timing constraints have been met.
+Record the following parameters:
 
-### Utilization Report
+| Parameter | Measurement |
+|---|---|
+| Functional correctness | Encryption output |
+| Area utilization | LUTs and flip-flops |
+| Timing performance | WNS and TNS |
+| Estimated power | Vivado power report |
+| External power | INA219 measurements, if configured |
 
-Record:
-
-- LUTs
-- Flip-flops
-- Slices
-
-### Power Report
-
-Record:
-
-- Total estimated power
-- Dynamic power
-- Static power
-
-Save reports separately for each variant.
-
-Example:
+## Area Overhead
 
 ```text
-util_clean.txt
-util_leak.txt
-util_counter.txt
-util_tiny.txt
-util_drain.txt
-util_burst.txt
-util_hamming.txt
+Area Overhead (%) =
+((Trojan Area - Clean Area) / Clean Area) * 100
 ```
 
-## 10. Generate FPGA Bitstream
+## Power Overhead
 
-In Vivado:
+```text
+Power Overhead (%) =
+((Trojan Power - Clean Power) / Clean Power) * 100
+```
 
-1. Select Generate Bitstream.
-2. Wait for completion.
-3. Open Hardware Manager.
+Use the same measurement conditions for all variants.
 
-If Vivado reports UCIO-1 or NSTD-1 errors, check the XDC pin assignments and I/O standards.
+# 21. Automating Builds Using Tcl
 
-## 11. Program the Basys3 FPGA
+Create:
 
-1. Connect the Basys3 board to your computer using a micro-USB cable.
-2. Turn on the board.
-3. Ensure the JP1 jumper is configured for JTAG.
-4. Open Vivado Hardware Manager.
-5. Select Open Target.
-6. Choose Auto Connect.
-7. Select Program Device.
-8. Choose the generated `.bit` file.
-9. Click Program.
+```text
+build.tcl
+```
 
-The FPGA should now execute the selected design.
-
-To switch variants, change the VARIANT parameter and rebuild the bitstream.
-
-## 12. Automate Builds Using Tcl
-
-Create a file named `build.tcl`.
+Example:
 
 ```tcl
 set variant 4
@@ -426,20 +972,20 @@ create_project aes_trojan ./proj \
 -part xc7a35tcpg236-1 -force
 
 add_files {
-    aes_sbox.v
-    key_expansion.v
-    aes_transforms.v
-    aes_128.v
-    aes_128_trojan_leak.v
-    aes_128_trojan_counter.v
-    aes_128_trojan_tiny.v
-    aes_128_trojan_drain.v
-    aes_128_trojan_burst.v
-    aes_128_trojan_hamming.v
-    basys3_top_v2.v
+    rtl/aes_sbox.v
+    rtl/key_expansion.v
+    rtl/aes_transforms.v
+    rtl/aes_128.v
+    rtl/aes_128_trojan_leak.v
+    rtl/aes_128_trojan_counter.v
+    rtl/aes_128_trojan_tiny.v
+    rtl/aes_128_trojan_drain.v
+    rtl/aes_128_trojan_burst.v
+    rtl/aes_128_trojan_hamming.v
+    rtl/basys3_top_v2.v
 }
 
-add_files -fileset constrs_1 Basys3_Master.xdc
+add_files -fileset constrs_1 constraints/Basys3_Master.xdc
 
 set_property top basys3_top_v2 [current_fileset]
 
@@ -453,101 +999,70 @@ wait_on_run impl_1
 
 open_run impl_1
 
-report_utilization -file util_v$variant.txt
+report_utilization -file reports/util_v$variant.txt
 
 report_timing_summary \
--file timing_v$variant.txt
+-file reports/timing_v$variant.txt
 
-report_power -file power_v$variant.txt
+report_power -file reports/power_v$variant.txt
 ```
 
-Execute:
+Execute the script from the project root using:
 
 ```bash
 vivado -mode batch -source build.tcl
 ```
 
-Change the variant value before rebuilding.
+Change the variant number before each build.
 
-## 13. Performance Analysis
+# 22. Troubleshooting
 
-Compare the clean AES implementation against the Trojan-infected implementations.
-
-Suggested evaluation parameters:
-
-| Parameter | Evaluation |
+| Problem | Solution |
 |---|---|
-| Functional Correctness | AES encryption output |
-| Area Overhead | LUT and FF utilization |
-| Timing Overhead | WNS and TNS |
-| Power Overhead | Estimated FPGA power |
-| Hardware Behaviour | Trojan activation and effects |
-
-### Area Overhead
-
-Calculate the percentage increase in FPGA resource utilization:
-
-```text
-Area Overhead (%) =
-((Trojan Area - Clean Area) / Clean Area) * 100
-```
-
-### Power Overhead
-
-```text
-Power Overhead (%) =
-((Trojan Power - Clean Power) / Clean Power) * 100
-```
-
-Use consistent measurement conditions when comparing variants.
-
-## 14. Common Errors and Troubleshooting
-
-| Error | Possible Solution |
-|---|---|
-| Module not found | Check whether all Verilog files are added |
-| UCIO-1 | Assign missing FPGA pins |
-| NSTD-1 | Specify the correct I/O standard |
-| Negative WNS | Inspect timing constraints and critical paths |
-| FPGA not detected | Check USB connection, board power and JTAG |
-| Unknown X values | Check reset and testbench input initialization |
-| Incorrect Trojan variant | Verify VARIANT and rebuild the bitstream |
-| Simulation compilation failure | Check module names and dependencies |
-
-## 15. Recommended Execution Workflow
-
-Follow this order:
-
-1. Simulate the clean AES-128 implementation.
-2. Verify the expected ciphertext.
-3. Simulate the Trojan variants.
-4. Create the Vivado project.
-5. Configure the Basys3 XDC file.
-6. Build the clean implementation (VARIANT 0).
-7. Program and test the FPGA.
-8. Build each Trojan variant.
-9. Collect utilization, timing, and power reports.
-10. Compare the results.
-11. Perform external power measurements using the INA219, if configured.
-
-## Tools and Technologies
-
-- Verilog HDL
-- AES-128 Encryption
-- Icarus Verilog
-- GTKWave
-- AMD Xilinx Vivado
-- Artix-7 FPGA
-- Digilent Basys3
-- Tcl Automation
-- INA219 Power Monitoring
-
-## Project Objective
-
-The primary objective is to investigate the effects of hardware Trojans on an AES-128 cryptographic implementation through RTL simulation, FPGA implementation, resource utilization analysis, timing analysis, and power measurements.
-
-The project provides an experimental platform for understanding hardware security threats and evaluating their impact on FPGA-based cryptographic systems.
+| Module not found | Check whether all source files are included |
+| Compilation error | Check module names, syntax and dependencies |
+| Unknown X values | Check reset and testbench inputs |
+| Incorrect ciphertext | Verify AES logic and testbench inputs |
+| UCIO-1 | Add missing pin assignments |
+| NSTD-1 | Configure the required I/O standards |
+| Negative WNS | Inspect clock constraints and critical paths |
+| Board not detected | Check USB, power, JTAG and cable drivers |
+| Wrong variant | Verify VARIANT and rebuild the bitstream |
+| Missing waveform | Check `$dumpfile` and `$dumpvars` |
 
 ---
 
-**Note:** Verify the exact Trojan variant mapping and top-level ports against the actual Verilog source files before running synthesis or generating the bitstream.
+# Recommended Execution Order
+
+Follow this sequence to complete the project:
+
+- [ ] Install VS Code, Icarus Verilog and GTKWave.
+- [ ] Create the project directory.
+- [ ] Understand the AES Verilog modules.
+- [ ] Write and simulate a basic Verilog program.
+- [ ] Compile the clean AES-128 design.
+- [ ] Verify the expected ciphertext.
+- [ ] Generate and inspect GTKWave waveforms.
+- [ ] Simulate all Trojan variants.
+- [ ] Set up Vivado on Windows/Linux.
+- [ ] Create the Vivado project.
+- [ ] Add design, simulation and constraint files.
+- [ ] Configure the Basys3 pin assignments.
+- [ ] Build the clean AES implementation.
+- [ ] Program the Basys3 FPGA.
+- [ ] Build each Trojan variant.
+- [ ] Collect utilization, timing and power reports.
+- [ ] Perform external power measurements, if configured.
+- [ ] Compare clean and Trojan implementations.
+
+---
+
+# Project Objective
+
+This project provides an experimental platform for studying hardware security threats in AES-128 cryptographic implementations.
+
+By combining Verilog simulation, FPGA implementation, resource utilization analysis, timing analysis and power measurements, the project investigates how hardware Trojans can affect the behaviour and physical characteristics of cryptographic hardware.
+
+**Technologies:** Verilog HDL | AES-128 | Icarus Verilog | GTKWave | AMD Xilinx Vivado | Artix-7 FPGA | Basys3 | Tcl | INA219
+
+**Important:** Always verify the actual module names, port definitions, Trojan variant mapping and testbench dependencies in the source code before compiling or generating the FPGA bitstream.
